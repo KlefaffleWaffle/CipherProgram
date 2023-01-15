@@ -16,28 +16,33 @@
  * */
 
 bool defaultFolderIsActive = false;
-std::string boolValue(bool);
 std::string defaultPath = "/home/pi/Documents/";
-std::string adtnlSubDirectories = "";
 std::string fileName = "";
 
-int startEncrypt;
-int endEncrypt;
 
+//determines where encryption/decryption starts and stops
 std::vector<int> startNStop;
-std::vector<int> newLinePos;
 
+//determines whether to encrypt or decrypt
 bool HandleMainInput(std::string filePath);
+
+//adds backslashes in case input string has a space
 std::string addBackSlashes(std::string);
 
+//Encrypts the file.
 void Encrypt(std::string filePath);
 
-bool scanString (std::fstream&);
+//Searches for encryption triggers
+void scanFile (std::fstream&);
 
+//True means Encrypt False means Decrypt
+//Not to be confused with "CipherIsOn" which references whether to apply any effect to txt.
 bool encrypt = true;
 
+//Converts filename from x --> xE.txt --> xD.txt
 std::string newFileName(std::string);
 
+//Used to handle situations where fileName has ".txt" in it.
 bool txtInInput = false;
 
 int main()
@@ -59,22 +64,7 @@ int main()
 
 }
 
-//returns bool value as "True or False"
-std::string boolValue(bool b)
-{
-    std::string s;
-    if (b) {
-        s = "True\n";
-    }
-    else if (b == false) {
-        s = "False\n";
-    }
-    else {
-        s = "AJD error: Bool has not been initialized";
-    }
 
-    return s;
-}
 
 //Determines weather to Encrypt or Decrypt
 bool HandleMainInput(std::string filePath) {
@@ -106,17 +96,19 @@ std::string addBackSlashes(std::string inputString){
 
 
 		std::string tempString1 = "";
+		
+		//for every character in Input, check to see if it's space.
+		//If so, insert "\\" before adding the space
 			for (int i = 0; i < inputString.size(); i++){
 					if(inputString.at(i) == ' '){
 						tempString1 += '\\';
 					}
-							//cout << "\t Looping Through \'Add Backslashes\' successfully" <<endl;
+					
 					tempString1 += inputString.at(i);
 					
-				}
-				inputString = tempString1;
-				//cout << "\t \'Add Backslashes\' finished successfully" <<endl;
-				return tempString1;
+			}
+				
+			return tempString1;
 
 }
 
@@ -129,24 +121,26 @@ void Encrypt(std::string filePath){
 	
 	std::string line;
 	std::string newLine;
-	//reads the file line by line looking for
-	bool pointless = scanString(myFile);
+	
+	//reads the file line by line looking for encryption points
+	scanFile(myFile);
 	
 	std::string newFilePath =defaultPath + newFileName(filePath) + ".txt";
 	//std::fstream newFile(newFilePath);
 	
 	std::ofstream newFile;
-	if(encrypt){
 	newFile.open(newFilePath);
-
-	}else{
-	newFile.open(newFilePath);
-
 	
-	}
 	int charTracker = 0;
 	int vectorTracker = 0;
+	
+	/*==================================
+	 * Means Modify NOT Encrypt/Decrypt
+	 * =================================
+	 * */
 	bool cipherIsOn = false;
+	
+	//myFile not to be confused with newFile
 	
 	//I'm not super familiar with reseting files. 
 	//The following is a modified code from stack overflow
@@ -160,6 +154,8 @@ void Encrypt(std::string filePath){
 	
 		//for every char in the line
 		for(int i = 0; i < line.size(); i++,charTracker++){
+			
+			//if charValue is = to a value that turns encryption on or off
 			if(startNStop.size() > 0 && charTracker == startNStop.at(vectorTracker)){
 			
 				if(cipherIsOn == true){
@@ -167,6 +163,8 @@ void Encrypt(std::string filePath){
 				}else{
 					cipherIsOn = true;
 				}
+				
+				//once we hit an encryption trigger, advance the index for StartNStop
 				if(vectorTracker < startNStop.size()-1){
 				vectorTracker++;
 				}
@@ -174,44 +172,37 @@ void Encrypt(std::string filePath){
 			char c = line.at(i);
 			
 			if(cipherIsOn){
-				//
+				//Heart of Encryption/Decryption
+				
 				if(encrypt == true){
-					for(int j = 0; j < 15; j++){
-					if (c > 126){
-							c = 32;
-					}
-					c++;
+				c+= 15;
+				
+					if(c > 126){
+						int diff = c-126;
+						c= 32+diff;
 					}
 				}else{
-					for(int j = 0; j < 15; j++){
-						if (c < 32){
-							c = 126;
-						}
-						c--;
+					c-=15;
+					if(c < 32){
+						int diff = 32-c;
+						c = 126-diff;
 					}
 				}
 			}
-			
+			//adds the char, whether original or ciphered to newLine, which will be added to newFile
 			newLine += c;
 		}
 		newFile << newLine << "\n"; 
 	
-	}
-
-	
-	//
-	//save filename
-	//create andFillnewFile
-	//copy into old file || delete old file and rename new. 
-	
-	
+	}	
 	
 }
 
 //actually scans file
-bool scanString (std::fstream& file){
+void scanFile (std::fstream& file){
 	//Rename to Scan File
-
+	int startEncrypt;
+	int endEncrypt;
 		
 	int sqrOpnBr = -1;
 	int dllrOpnSgn=-1;
@@ -228,63 +219,65 @@ bool scanString (std::fstream& file){
 		//file >> line;
 		std::getline(file, line);
 		
-		
+		//for every character in the line
 		for(int i = 0; i < line.size(); i++){
 	
-	//Vector startNStop is added in pairs. If size is odd, then it needs an EndPoint, if Even, it's only looking for startingPoint
-		if(startNStop.size()%2 == 0){
-			if(line.at(i) == '[' ){
-			sqrOpnBr = i;
+		//Vector startNStop is added in pairs. If size is odd, then it needs an EndPoint, if Even, it's only looking for startingPoint
+			if(startNStop.size()%2 == 0){
+				
+				if(line.at(i) == '[' ){
+				sqrOpnBr = i;
+				}
+				
+				if(line.at(i) == '$'){
+				dllrOpnSgn = i;
 			
-			}
-			if(line.at(i) == '$'){
-			dllrOpnSgn = i;
+				}
+				if(line.at(i) == '{'){
+				crlyOpnBr = i;
 			
-			}
-			if(line.at(i) == '{'){
-			crlyOpnBr = i;
-			
-			}
+				}
 		
-			if (dllrOpnSgn == sqrOpnBr+1 && crlyOpnBr == dllrOpnSgn+1){
+				if (dllrOpnSgn == sqrOpnBr+1 && crlyOpnBr == dllrOpnSgn+1){
 			
-			startEncrypt= crlyOpnBr+1;
-			startNStop.push_back(characterCounter +startEncrypt);
+				startEncrypt= crlyOpnBr+1;
+				startNStop.push_back(characterCounter +startEncrypt);
 			
-			foundEnd = false;
-	 sqrOpnBr = -1;
-	 dllrOpnSgn=-1;
-	 crlyOpnBr=-1;
+				foundEnd = false;
+				sqrOpnBr = -1;
+				dllrOpnSgn=-1;
+				crlyOpnBr=-1;
+				}
 			}
-		}
 	
-		if(startNStop.size()%2 == 1){
+			if(startNStop.size()%2 == 1){
 	
 	
-			if(line.at(i) == ']' ){
-			sqrClsdBr = i;
+				if(line.at(i) == ']' ){
+				sqrClsdBr = i;
 		
-			}
-			if(line.at(i) == '$'){
-			dllrClsdSgn = i;
+				}
+				if(line.at(i) == '$'){
+				dllrClsdSgn = i;
 			
-			}
-			if(line.at(i) == '}'){
-			crlyClsdBr = i;
+				}
+				if(line.at(i) == '}'){
+				crlyClsdBr = i;
 		
-			}
+				}
 		
 				if (dllrClsdSgn == sqrClsdBr-1 && crlyClsdBr == dllrClsdSgn-1){
 				endEncrypt= crlyClsdBr-1; 
 				startNStop.push_back(characterCounter + endEncrypt);
 		
-	 sqrClsdBr = -1;
-	 dllrClsdSgn=-1;
-	 crlyClsdBr=-1;
+				sqrClsdBr = -1;
+				dllrClsdSgn=-1;
+				crlyClsdBr=-1;
 				}
 			}
 			
 		}
+		//Used to keep track of which character we are on in the document
 		characterCounter += line.size();
 
 		
@@ -293,31 +286,28 @@ bool scanString (std::fstream& file){
 		
 	}
 
-	
-	
-	if(startNStop.size() > 0){
-	return true;
-	}else{
-	return false;
-	}
 }
 
+//creates new filename x --> xE --> xD
 std::string newFileName(std::string s){
+
 txtInInput = true;
 
-std::string newName = "";
+	std::string newName = "";
 	std::string testString = "";
+	
+	//sets testString to last four chars of input s;
 	for(int i = s.size() -4; i < s.size() && i > 0; i++){
 		testString = testString + s.at(i);
 	}
-
 	std::string txt = ".txt";
 	
+	
+	//if+for checks to see if testString matches ".txt"
 	if(testString.size() < 4){
 		testString = s;
 		txtInInput = false;
 	}
-	
 	for(int i = 0; i < 4 && txtInInput == true; i++){
 		if(testString.at(i) != txt.at(i)){
 			txtInInput = false;
@@ -325,11 +315,15 @@ std::string newName = "";
 		}
 	}
 	
+
+	//if filename has ".txt" in it
 	if(txtInInput == true){
 
+	//adding all chars UNTIL '.'
 		for(int i = 0; i < s.size()-4; i++){
 			newName = newName + s.at(i);
 		}
+		
 	}else{
 
 		newName = s;
@@ -339,13 +333,9 @@ std::string newName = "";
 			newName = newName+"E";	
 		
 	}else{
-		//some files may have .txt in them;
-		int pos = 1;
-		if(txtInInput == true){
-			//pos = 4;
-		}
-		if(newName.at(newName.size()-pos) == 'E'){
-			newName.at(newName.size()-pos) = 'D';
+		
+		if(newName.at(newName.size()-1) == 'E'){
+			newName.at(newName.size()-1) = 'D';
 
 		}else{
 			newName += 'D';
